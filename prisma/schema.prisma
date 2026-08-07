@@ -65,9 +65,10 @@ model Note {
 }
 
 model ApiCallLog {
-  id    String   @id @default(cuid())
-  date  DateTime @unique @db.Date
-  count Int      @default(0)
+  id           String   @id @default(cuid())
+  date         DateTime @unique @db.Date
+  count        Int      @default(0)
+  capOverride  Int?
 }
 
 // Single-row OAuth2 user-context token pair for the connected X account
