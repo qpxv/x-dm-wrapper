@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendDirectMessage } from "@/lib/x/dm";
 import { advanceLastMessageAt } from "@/lib/x/ingest";
+import { generateSuggestions } from "@/lib/ai/suggest";
 
 async function requireSession(): Promise<void> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -80,4 +81,23 @@ export async function addNote(conversationId: string, content: string): Promise<
   });
 
   revalidatePath(`/conversations/${conversationId}`);
+}
+
+export async function getAiSuggestions(conversationId: string): Promise<string[]> {
+  await requireSession();
+
+  const [messages, notes] = await Promise.all([
+    prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { sentAt: "asc" },
+      select: { direction: true, text: true },
+    }),
+    prisma.note.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "asc" },
+      select: { content: true, createdAt: true },
+    }),
+  ]);
+
+  return generateSuggestions(messages, notes);
 }
