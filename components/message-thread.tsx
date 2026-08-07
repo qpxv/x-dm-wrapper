@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type JSX } from "react";
 import type { Message } from "@prisma/client";
+import { useReply } from "@/components/reply-context";
 import { formatDayLabel, formatMessageTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -21,12 +22,13 @@ function groupByLocalDay(messages: Message[]): { label: string; messages: Messag
   return groups;
 }
 
-export function MessageThread({ messages }: { messages: Message[] }): JSX.Element {
+export function MessageThread(): JSX.Element {
+  const { messages } = useReply();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView();
-  }, []);
+  }, [messages.length]);
 
   const groups = groupByLocalDay(messages);
 

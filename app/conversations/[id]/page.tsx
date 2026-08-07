@@ -40,7 +40,7 @@ export default async function ConversationPage({
   }
 
   return (
-    <ReplyProvider conversationId={conversation.id}>
+    <ReplyProvider conversationId={conversation.id} initialMessages={conversation.messages}>
       <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-hidden">
         <MarkConversationRead conversationId={conversation.id} />
 
@@ -66,11 +66,11 @@ export default async function ConversationPage({
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-          <MessageThread messages={conversation.messages} />
+          <MessageThread />
         </div>
 
         <SuggestionsPanel />
-        <ReplyBox conversationId={conversation.id} />
+        <ReplyBox />
       </div>
     </ReplyProvider>
   );
