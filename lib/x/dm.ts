@@ -76,3 +76,43 @@ export async function fetchConversationEvents(
     nextToken: body.meta?.next_token ?? null,
   };
 }
+
+interface SendMessageResponse {
+  data?: { dm_conversation_id: string; dm_event_id: string };
+}
+
+// Rate-cap gated: throws if the daily API call cap has been reached, since a
+// user-initiated send must surface an error rather than fail silently.
+export async function sendDirectMessage(
+  xConversationId: string,
+  text: string
+): Promise<{ dmEventId: string }> {
+  const allowed = await tryConsumeApiCall();
+  if (!allowed) {
+    throw new Error("Daily X API call cap reached — cannot send right now.");
+  }
+
+  const accessToken = await getValidAccessToken();
+  const response = await fetch(
+    `https://api.x.com/2/dm_conversations/${xConversationId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to send message: ${response.status} ${await response.text()}`);
+  }
+
+  const body: SendMessageResponse = await response.json();
+  if (!body.data?.dm_event_id) {
+    throw new Error("Send message response missing dm_event_id");
+  }
+
+  return { dmEventId: body.data.dm_event_id };
+}
