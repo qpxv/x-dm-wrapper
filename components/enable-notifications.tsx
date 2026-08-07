@@ -32,9 +32,23 @@ function isIos(): boolean {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+function toSubscriptionPayload(
+  subscription: PushSubscription
+): { endpoint: string; keys: { p256dh: string; auth: string } } {
+  const json = subscription.toJSON();
+  if (!json.keys?.p256dh || !json.keys?.auth) {
+    throw new Error("Push subscription is missing encryption keys");
+  }
+  return {
+    endpoint: subscription.endpoint,
+    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+  };
+}
+
 export function EnableNotifications(): JSX.Element | null {
   const [status, setStatus] = useState<Status>("checking");
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,8 +70,28 @@ export function EnableNotifications(): JSX.Element | null {
 
       const registration = await navigator.serviceWorker.register("/sw.js");
       const existing = await registration.pushManager.getSubscription();
-      if (!cancelled) {
-        setStatus(existing ? "enabled" : "can-enable");
+
+      if (!existing) {
+        if (!cancelled) {
+          setStatus("can-enable");
+        }
+        return;
+      }
+
+      // A subscription can exist at the browser level without ever having
+      // been persisted server-side (e.g. a past subscribeToPush call that
+      // silently failed) — re-sync on every mount so that case self-heals.
+      try {
+        await subscribeToPush(toSubscriptionPayload(existing));
+        if (!cancelled) {
+          setStatus("enabled");
+        }
+      } catch {
+        await existing.unsubscribe();
+        if (!cancelled) {
+          setError("Couldn't enable notifications — try again.");
+          setStatus("can-enable");
+        }
       }
     }
 
@@ -69,10 +103,11 @@ export function EnableNotifications(): JSX.Element | null {
 
   async function handleEnable(): Promise<void> {
     setIsPending(true);
+    setError(null);
+    let subscription: PushSubscription | null = null;
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setIsPending(false);
         return;
       }
 
@@ -82,13 +117,18 @@ export function EnableNotifications(): JSX.Element | null {
       }
 
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
+      subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
-      await subscribeToPush(subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } });
+      await subscribeToPush(toSubscriptionPayload(subscription));
       setStatus("enabled");
+    } catch {
+      // Don't leave a browser-level subscription dangling if the server
+      // never got it — otherwise the next mount would wrongly report "enabled".
+      await subscription?.unsubscribe();
+      setError("Couldn't enable notifications — try again.");
     } finally {
       setIsPending(false);
     }
@@ -107,8 +147,11 @@ export function EnableNotifications(): JSX.Element | null {
   }
 
   return (
-    <Button variant="outline" size="icon" aria-label="Enable notifications" onClick={handleEnable} disabled={isPending}>
-      {isPending ? <Spinner /> : <Bell className="size-4" />}
-    </Button>
+    <div className="flex items-center gap-2">
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      <Button variant="outline" size="icon" aria-label="Enable notifications" onClick={handleEnable} disabled={isPending}>
+        {isPending ? <Spinner /> : <Bell className="size-4" />}
+      </Button>
+    </div>
   );
 }
