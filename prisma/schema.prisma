@@ -1,0 +1,155 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- App domain models ---
+
+model Contact {
+  id              String   @id @default(cuid())
+  xUserId         String   @unique
+  username        String
+  name            String
+  profileImageUrl String?
+  createdAt       DateTime @default(now())
+
+  conversations Conversation[]
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  xConversationId String    @unique
+  contactId       String
+  contact         Contact   @relation(fields: [contactId], references: [id])
+  lastMessageAt   DateTime?
+  isUnread        Boolean   @default(false)
+  backfilledAt    DateTime?
+  createdAt       DateTime  @default(now())
+
+  messages Message[]
+  notes    Note[]
+}
+
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  xEventId       String       @unique
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  direction      Direction
+  text           String
+  mediaUrls      String[]
+  sentAt         DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, sentAt])
+}
+
+model Note {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  content        String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model ApiCallLog {
+  id    String   @id @default(cuid())
+  date  DateTime @unique @db.Date
+  count Int      @default(0)
+}
+
+// Single-row OAuth2 user-context token pair for the connected X account
+// (needed for dm_events reads and message sends — the app-only bearer
+// token used for webhooks/CRC can't authenticate these).
+
+model XOAuthToken {
+  id           String   @id @default(cuid())
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}
+
+model PushSubscription {
+  id          String   @id @default(cuid())
+  endpoint    String   @unique
+  p256dh      String
+  auth        String
+  deviceLabel String?
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
