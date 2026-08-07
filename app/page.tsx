@@ -38,9 +38,8 @@ export default async function Home(): Promise<JSX.Element> {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-3">
+      <header className="flex items-center border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Inbox</h1>
-        <SignOutButton />
       </header>
 
       {hasPendingBackfill ? (
