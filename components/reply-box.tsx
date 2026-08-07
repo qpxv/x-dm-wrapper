@@ -2,8 +2,10 @@
 
 import { useState, useTransition, type JSX, type KeyboardEvent } from "react";
 import { sendReply } from "@/app/conversations/[id]/actions";
-import { Textarea } from "@/components/ui/textarea";
+import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
+
+const REPLY_MAX_HEIGHT = 160;
 
 export function ReplyBox({ conversationId }: { conversationId: string }): JSX.Element {
   const [text, setText] = useState("");
@@ -37,12 +39,12 @@ export function ReplyBox({ conversationId }: { conversationId: string }): JSX.El
   return (
     <div className="border-t px-4 py-3">
       <div className="flex items-end gap-2">
-        <Textarea
+        <AutoResizeTextarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Type a reply..."
-          rows={2}
+          maxHeight={REPLY_MAX_HEIGHT}
           className="text-sm"
         />
         <Button onClick={handleSend} disabled={isPending || !text.trim()}>

@@ -3,8 +3,10 @@
 import { useState, useTransition, type JSX } from "react";
 import type { Note } from "@prisma/client";
 import { addNote } from "@/app/conversations/[id]/actions";
-import { Textarea } from "@/components/ui/textarea";
+import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
+
+const NOTES_MAX_HEIGHT = 160;
 
 export function NotesSection({
   conversationId,
@@ -14,15 +16,16 @@ export function NotesSection({
   notes: Note[];
 }): JSX.Element {
   const [showHistory, setShowHistory] = useState(false);
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(notes[0]?.content ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const [latest, ...earlier] = notes;
+  const earlier = notes.slice(1);
+  const trimmed = content.trim();
+  const hasChanged = trimmed !== (notes[0]?.content ?? "");
 
-  function handleSubmit(): void {
+  function handleSave(): void {
     setError(null);
-    const trimmed = content.trim();
     if (!trimmed) {
       return;
     }
@@ -30,7 +33,6 @@ export function NotesSection({
     startTransition(async () => {
       try {
         await addNote(conversationId, trimmed);
-        setContent("");
       } catch {
         setError("Couldn't save note — try again.");
       }
@@ -52,17 +54,8 @@ export function NotesSection({
         ) : null}
       </div>
 
-      {latest ? (
-        <div className="rounded-md bg-muted p-2 text-sm">
-          <p className="whitespace-pre-wrap">{latest.content}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{latest.createdAt.toLocaleString()}</p>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No notes yet.</p>
-      )}
-
       {showHistory ? (
-        <ul className="mt-2 flex flex-col gap-2">
+        <ul className="mb-2 flex flex-col gap-2">
           {earlier.map((note) => (
             <li key={note.id} className="rounded-md bg-muted p-2 text-sm">
               <p className="whitespace-pre-wrap">{note.content}</p>
@@ -74,15 +67,15 @@ export function NotesSection({
         </ul>
       ) : null}
 
-      <div className="mt-2 flex gap-2">
-        <Textarea
+      <div className="flex gap-2">
+        <AutoResizeTextarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Add a note..."
-          rows={2}
+          maxHeight={NOTES_MAX_HEIGHT}
           className="text-sm"
         />
-        <Button size="sm" onClick={handleSubmit} disabled={isPending || !content.trim()}>
+        <Button size="sm" onClick={handleSave} disabled={isPending || !trimmed || !hasChanged}>
           Save
         </Button>
       </div>
