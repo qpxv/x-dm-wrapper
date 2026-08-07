@@ -5,6 +5,13 @@ export function buildConversationId(userIdA: string, userIdB: string): string {
   return BigInt(userIdA) < BigInt(userIdB) ? `${userIdA}-${userIdB}` : `${userIdB}-${userIdA}`;
 }
 
+export interface EmbeddedUser {
+  id: string;
+  username: string;
+  name: string;
+  profile_image_url?: string;
+}
+
 export interface DmEvent {
   id: string;
   event_type: string;
@@ -73,6 +80,83 @@ export async function fetchConversationEvents(
   return {
     events: body.data ?? [],
     mediaByKey,
+    nextToken: body.meta?.next_token ?? null,
+  };
+}
+
+// Cheapest possible check against the account-wide dm_events feed — X bills
+// $0.01 per event object returned, so this always passes max_results=1
+// explicitly (the API defaults to 100 if omitted). Used by the poll safety
+// net (lib/x/poll.ts) to detect whether anything's new before paying for a
+// full catch-up fetch.
+export async function fetchLatestDmEventId(): Promise<string | null> {
+  const allowed = await tryConsumeApiCall();
+  if (!allowed) {
+    return null;
+  }
+
+  const accessToken = await getValidAccessToken();
+  const params = new URLSearchParams({ max_results: "1", "dm_event.fields": DM_EVENT_FIELDS });
+  const response = await fetch(`https://api.x.com/2/dm_events?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch dm_events: ${response.status} ${await response.text()}`);
+  }
+
+  const body: DmEventsResponse = await response.json();
+  return body.data?.[0]?.id ?? null;
+}
+
+interface DmEventsWithUsersResponse {
+  data?: DmEvent[];
+  meta?: { next_token?: string };
+  includes?: { users?: EmbeddedUser[] };
+}
+
+export interface DmEventsWithUsersPage {
+  events: DmEvent[];
+  users: Map<string, EmbeddedUser>;
+  nextToken: string | null;
+}
+
+// Account-wide dm_events feed (not scoped to one conversation), newest-first
+// — used by the poll safety net's catch-up fetch. Rate-cap gated like every
+// other billable X call; unlike fetchConversationEvents this one also pulls
+// embedded sender profile data via expansions, needed to create brand-new
+// Contacts the same way the webhook path does from its embedded users.
+export async function fetchRecentDmEvents(maxResults: number): Promise<DmEventsWithUsersPage | null> {
+  const allowed = await tryConsumeApiCall();
+  if (!allowed) {
+    return null;
+  }
+
+  const accessToken = await getValidAccessToken();
+  const params = new URLSearchParams({
+    max_results: String(maxResults),
+    "dm_event.fields": DM_EVENT_FIELDS,
+    expansions: "sender_id,participant_ids",
+    "user.fields": "username,name,profile_image_url",
+  });
+
+  const response = await fetch(`https://api.x.com/2/dm_events?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch dm_events: ${response.status} ${await response.text()}`);
+  }
+
+  const body: DmEventsWithUsersResponse = await response.json();
+  const users = new Map<string, EmbeddedUser>();
+  for (const user of body.includes?.users ?? []) {
+    users.set(user.id, user);
+  }
+
+  return {
+    events: body.data ?? [],
+    users,
     nextToken: body.meta?.next_token ?? null,
   };
 }
