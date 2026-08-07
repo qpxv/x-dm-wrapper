@@ -75,6 +75,26 @@ export function parseWebhookPayload(rawBody: string): ParsedWebhookEvent | null 
   };
 }
 
+// Only advances lastMessageAt (and flips isUnread) when sentAt is actually
+// newer than what's stored — a duplicate/replayed/optimistic write must not
+// be able to move the conversation's sort position or unread state backward.
+export async function advanceLastMessageAt(
+  conversationId: string,
+  sentAt: Date,
+  direction: Direction
+): Promise<void> {
+  await prisma.conversation.updateMany({
+    where: {
+      id: conversationId,
+      OR: [{ lastMessageAt: null }, { lastMessageAt: { lt: sentAt } }],
+    },
+    data: {
+      lastMessageAt: sentAt,
+      ...(direction === Direction.INBOUND ? { isUnread: true } : {}),
+    },
+  });
+}
+
 async function upsertContact(userId: string, embeddedUsers: Map<string, EmbeddedUser>) {
   const embedded = embeddedUsers.get(userId);
 
@@ -130,19 +150,7 @@ export async function ingestWebhookEvent(parsed: ParsedWebhookEvent): Promise<vo
     update: {},
   });
 
-  // Only advance lastMessageAt (and flip isUnread) when this event is actually
-  // the newest we've seen — a duplicate/replayed webhook delivery must not be
-  // able to move the conversation's sort position or unread state.
-  await prisma.conversation.updateMany({
-    where: {
-      id: conversation.id,
-      OR: [{ lastMessageAt: null }, { lastMessageAt: { lt: parsed.sentAt } }],
-    },
-    data: {
-      lastMessageAt: parsed.sentAt,
-      ...(direction === Direction.INBOUND ? { isUnread: true } : {}),
-    },
-  });
+  await advanceLastMessageAt(conversation.id, parsed.sentAt, direction);
 
   if (isNewConversation) {
     await backfillConversation(conversation.id, otherUserId);
