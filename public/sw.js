@@ -12,8 +12,7 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification("X DM Wrapper", {
-      body: "New message",
+    self.registration.showNotification("New message", {
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       data: { url },
