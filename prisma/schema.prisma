@@ -83,6 +83,15 @@ model XOAuthToken {
   updatedAt    DateTime @updatedAt
 }
 
+// Single-row cursor tracking the newest dm_event id already ingested via
+// the poll safety net (lib/x/poll.ts), so a no-op poll only needs the
+// cheapest possible check against X's per-event-billed dm_events endpoint.
+model DmSyncCursor {
+  id          String   @id @default(cuid())
+  lastEventId String?
+  updatedAt   DateTime @updatedAt
+}
+
 model PushSubscription {
   id          String   @id @default(cuid())
   endpoint    String   @unique

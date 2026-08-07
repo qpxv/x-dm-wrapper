@@ -1,14 +1,7 @@
 import { Direction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { buildConversationId, fetchConversationEvents } from "@/lib/x/dm";
+import { buildConversationId, fetchConversationEvents, type EmbeddedUser } from "@/lib/x/dm";
 import { notifyNewMessage } from "@/lib/push/send";
-
-interface EmbeddedUser {
-  id: string;
-  username: string;
-  name: string;
-  profile_image_url?: string;
-}
 
 export interface ParsedWebhookEvent {
   eventId: string;
@@ -113,6 +106,81 @@ async function upsertContact(userId: string, embeddedUsers: Map<string, Embedded
   });
 }
 
+export interface ResolvedMessage {
+  eventId: string;
+  otherUserId: string;
+  direction: Direction;
+  senderId: string;
+  text: string;
+  mediaUrl: string | null;
+  sentAt: Date;
+  embeddedUsers: Map<string, EmbeddedUser>;
+}
+
+// Shared core used by both the webhook path (ingestWebhookEvent) and the
+// poll safety net (lib/x/poll.ts) — everything after direction/otherUserId
+// have already been resolved from whichever source shape they came from.
+export async function ingestResolvedMessage(msg: ResolvedMessage): Promise<void> {
+  const myUserId = process.env.X_MY_USER_ID;
+  if (!myUserId) {
+    throw new Error("X_MY_USER_ID is not set");
+  }
+
+  const contact = await upsertContact(msg.otherUserId, msg.embeddedUsers);
+
+  let conversation = await prisma.conversation.findUnique({ where: { contactId: contact.id } });
+  const isNewConversation = !conversation;
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        xConversationId: buildConversationId(myUserId, msg.otherUserId),
+        contactId: contact.id,
+        lastMessageAt: msg.sentAt,
+        isUnread: msg.direction === Direction.INBOUND,
+        backfilledAt: null,
+      },
+    });
+  }
+
+  await prisma.message.upsert({
+    where: { xEventId: msg.eventId },
+    create: {
+      xEventId: msg.eventId,
+      conversationId: conversation.id,
+      senderId: msg.senderId,
+      direction: msg.direction,
+      text: msg.text,
+      mediaUrls: msg.mediaUrl ? [msg.mediaUrl] : [],
+      sentAt: msg.sentAt,
+    },
+    update: {},
+  });
+
+  const advanced = await advanceLastMessageAt(conversation.id, msg.sentAt, msg.direction);
+
+  if (advanced && msg.direction === Direction.INBOUND) {
+    try {
+      await notifyNewMessage(conversation.id);
+    } catch (error) {
+      console.error("Failed to send push notification", error);
+    }
+  }
+
+  if (isNewConversation) {
+    // The core message is already safely persisted above — a backfill
+    // failure (e.g. X rate-limiting a burst of new-conversation lookups)
+    // must not be treated as fatal to this event's ingestion. Conversation
+    // stays backfilledAt: null, which surfaces the existing RateLimitBanner
+    // "continue anyway" retry flow (app/api/x/rate-limit/bump/route.ts).
+    try {
+      await backfillConversation(conversation.id, msg.otherUserId);
+    } catch (error) {
+      console.error("Failed to backfill new conversation", conversation.id, error);
+    }
+  }
+}
+
 export async function ingestWebhookEvent(parsed: ParsedWebhookEvent): Promise<void> {
   const myUserId = process.env.X_MY_USER_ID;
   if (!myUserId) {
@@ -122,50 +190,16 @@ export async function ingestWebhookEvent(parsed: ParsedWebhookEvent): Promise<vo
   const direction = parsed.senderId === myUserId ? Direction.OUTBOUND : Direction.INBOUND;
   const otherUserId = direction === Direction.OUTBOUND ? parsed.recipientId : parsed.senderId;
 
-  const contact = await upsertContact(otherUserId, parsed.embeddedUsers);
-
-  let conversation = await prisma.conversation.findUnique({ where: { contactId: contact.id } });
-  const isNewConversation = !conversation;
-
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        xConversationId: buildConversationId(myUserId, otherUserId),
-        contactId: contact.id,
-        lastMessageAt: parsed.sentAt,
-        isUnread: direction === Direction.INBOUND,
-        backfilledAt: null,
-      },
-    });
-  }
-
-  await prisma.message.upsert({
-    where: { xEventId: parsed.eventId },
-    create: {
-      xEventId: parsed.eventId,
-      conversationId: conversation.id,
-      senderId: parsed.senderId,
-      direction,
-      text: parsed.text,
-      mediaUrls: parsed.mediaUrl ? [parsed.mediaUrl] : [],
-      sentAt: parsed.sentAt,
-    },
-    update: {},
+  await ingestResolvedMessage({
+    eventId: parsed.eventId,
+    otherUserId,
+    direction,
+    senderId: parsed.senderId,
+    text: parsed.text,
+    mediaUrl: parsed.mediaUrl,
+    sentAt: parsed.sentAt,
+    embeddedUsers: parsed.embeddedUsers,
   });
-
-  const advanced = await advanceLastMessageAt(conversation.id, parsed.sentAt, direction);
-
-  if (advanced && direction === Direction.INBOUND) {
-    try {
-      await notifyNewMessage(conversation.id);
-    } catch (error) {
-      console.error("Failed to send push notification", error);
-    }
-  }
-
-  if (isNewConversation) {
-    await backfillConversation(conversation.id, otherUserId);
-  }
 }
 
 export async function backfillConversation(conversationId: string, otherUserId: string): Promise<void> {
