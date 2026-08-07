@@ -130,8 +130,14 @@ export async function ingestWebhookEvent(parsed: ParsedWebhookEvent): Promise<vo
     update: {},
   });
 
-  await prisma.conversation.update({
-    where: { id: conversation.id },
+  // Only advance lastMessageAt (and flip isUnread) when this event is actually
+  // the newest we've seen — a duplicate/replayed webhook delivery must not be
+  // able to move the conversation's sort position or unread state.
+  await prisma.conversation.updateMany({
+    where: {
+      id: conversation.id,
+      OR: [{ lastMessageAt: null }, { lastMessageAt: { lt: parsed.sentAt } }],
+    },
     data: {
       lastMessageAt: parsed.sentAt,
       ...(direction === Direction.INBOUND ? { isUnread: true } : {}),
