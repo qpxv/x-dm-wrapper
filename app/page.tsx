@@ -8,6 +8,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RateLimitBanner } from "@/components/rate-limit-banner";
+import { EnableNotifications } from "@/components/enable-notifications";
 import { formatRelativeTime } from "@/lib/format";
 
 export default async function Home(): Promise<JSX.Element> {
@@ -38,8 +39,9 @@ export default async function Home(): Promise<JSX.Element> {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
-      <header className="flex items-center border-b px-4 py-3">
-        <h1 className="text-lg font-semibold">Inbox</h1>
+      <header className="flex items-center gap-3 border-b px-4 py-3">
+        <h1 className="flex-1 text-lg font-semibold">Inbox</h1>
+        <EnableNotifications />
       </header>
 
       {hasPendingBackfill ? (

@@ -1,6 +1,7 @@
 import { Direction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { buildConversationId, fetchConversationEvents } from "@/lib/x/dm";
+import { notifyNewMessage } from "@/lib/push/send";
 
 interface EmbeddedUser {
   id: string;
@@ -82,8 +83,8 @@ export async function advanceLastMessageAt(
   conversationId: string,
   sentAt: Date,
   direction: Direction
-): Promise<void> {
-  await prisma.conversation.updateMany({
+): Promise<boolean> {
+  const result = await prisma.conversation.updateMany({
     where: {
       id: conversationId,
       OR: [{ lastMessageAt: null }, { lastMessageAt: { lt: sentAt } }],
@@ -93,6 +94,8 @@ export async function advanceLastMessageAt(
       ...(direction === Direction.INBOUND ? { isUnread: true } : {}),
     },
   });
+
+  return result.count > 0;
 }
 
 async function upsertContact(userId: string, embeddedUsers: Map<string, EmbeddedUser>) {
@@ -150,7 +153,15 @@ export async function ingestWebhookEvent(parsed: ParsedWebhookEvent): Promise<vo
     update: {},
   });
 
-  await advanceLastMessageAt(conversation.id, parsed.sentAt, direction);
+  const advanced = await advanceLastMessageAt(conversation.id, parsed.sentAt, direction);
+
+  if (advanced && direction === Direction.INBOUND) {
+    try {
+      await notifyNewMessage(conversation.id);
+    } catch (error) {
+      console.error("Failed to send push notification", error);
+    }
+  }
 
   if (isNewConversation) {
     await backfillConversation(conversation.id, otherUserId);
