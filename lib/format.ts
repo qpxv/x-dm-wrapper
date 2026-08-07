@@ -23,3 +23,37 @@ export function formatRelativeTime(date: Date): string {
 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+// Uses the caller's local time zone, so this must only be called client-side —
+// "Today"/"Yesterday" boundaries need to match the user's actual midnight, not
+// the server's (Vercel functions run in UTC).
+export function formatDayLabel(date: Date): string {
+  const now = new Date();
+  if (isSameLocalDay(date, now)) {
+    return "Today";
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameLocalDay(date, yesterday)) {
+    return "Yesterday";
+  }
+
+  const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  if (date.getFullYear() !== now.getFullYear()) {
+    options.year = "numeric";
+  }
+  return date.toLocaleDateString(undefined, options);
+}
+
+export function formatMessageTime(date: Date): string {
+  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
