@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type JSX, type KeyboardEvent } from "react";
+import { Send } from "lucide-react";
 import { sendReply } from "@/app/conversations/[id]/actions";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
@@ -47,8 +48,13 @@ export function ReplyBox({ conversationId }: { conversationId: string }): JSX.El
           maxHeight={REPLY_MAX_HEIGHT}
           className="text-sm"
         />
-        <Button onClick={handleSend} disabled={isPending || !text.trim()}>
-          Send
+        <Button
+          size="icon"
+          aria-label="Send"
+          onClick={handleSend}
+          disabled={isPending || !text.trim()}
+        >
+          <Send className="size-4" />
         </Button>
       </div>
       {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}

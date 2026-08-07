@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type JSX } from "react";
+import { Save } from "lucide-react";
 import type { Note } from "@prisma/client";
 import { addNote } from "@/app/conversations/[id]/actions";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
@@ -67,7 +68,7 @@ export function NotesSection({
         </ul>
       ) : null}
 
-      <div className="flex gap-2">
+      <div className="flex items-end gap-2">
         <AutoResizeTextarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -75,8 +76,13 @@ export function NotesSection({
           maxHeight={NOTES_MAX_HEIGHT}
           className="text-sm"
         />
-        <Button size="sm" onClick={handleSave} disabled={isPending || !trimmed || !hasChanged}>
-          Save
+        <Button
+          size="icon"
+          aria-label="Save note"
+          onClick={handleSave}
+          disabled={isPending || !trimmed || !hasChanged}
+        >
+          <Save className="size-4" />
         </Button>
       </div>
       {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
