@@ -32,6 +32,11 @@ function isIos(): boolean {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+function describeError(err: unknown): string {
+  const detail = err instanceof Error ? err.message : String(err);
+  return `Couldn't enable notifications: ${detail}`;
+}
+
 function toSubscriptionPayload(
   subscription: PushSubscription
 ): { endpoint: string; keys: { p256dh: string; auth: string } } {
@@ -86,10 +91,11 @@ export function EnableNotifications(): JSX.Element | null {
         if (!cancelled) {
           setStatus("enabled");
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to sync existing push subscription", err);
         await existing.unsubscribe();
         if (!cancelled) {
-          setError("Couldn't enable notifications — try again.");
+          setError(describeError(err));
           setStatus("can-enable");
         }
       }
@@ -124,11 +130,12 @@ export function EnableNotifications(): JSX.Element | null {
 
       await subscribeToPush(toSubscriptionPayload(subscription));
       setStatus("enabled");
-    } catch {
+    } catch (err) {
+      console.error("Failed to enable push notifications", err);
       // Don't leave a browser-level subscription dangling if the server
       // never got it — otherwise the next mount would wrongly report "enabled".
       await subscription?.unsubscribe();
-      setError("Couldn't enable notifications — try again.");
+      setError(describeError(err));
     } finally {
       setIsPending(false);
     }
