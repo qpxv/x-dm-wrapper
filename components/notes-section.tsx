@@ -42,9 +42,8 @@ export function NotesSection({
 
   return (
     <section className="border-b px-4 py-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">Notes</h2>
-        {earlier.length > 0 ? (
+      {earlier.length > 0 ? (
+        <div className="mb-2 flex justify-end">
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
@@ -52,8 +51,8 @@ export function NotesSection({
           >
             {showHistory ? "Hide history" : `Show history (${earlier.length})`}
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {showHistory ? (
         <ul className="mb-2 flex flex-col gap-2">
