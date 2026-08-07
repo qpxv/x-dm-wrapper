@@ -50,6 +50,7 @@ export function ReplyBox({ conversationId }: { conversationId: string }): JSX.El
         />
         <Button
           size="icon"
+          className="size-9"
           aria-label="Send"
           onClick={handleSend}
           disabled={isPending || !text.trim()}

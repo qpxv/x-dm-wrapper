@@ -30,7 +30,7 @@ export function AutoResizeTextarea({
     <Textarea
       ref={ref}
       value={value}
-      className={cn("min-h-0 resize-none overflow-y-auto", className)}
+      className={cn("min-h-9 resize-none overflow-y-auto", className)}
       {...props}
     />
   );

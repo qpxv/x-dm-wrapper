@@ -78,6 +78,7 @@ export function NotesSection({
         />
         <Button
           size="icon"
+          className="size-9"
           aria-label="Save note"
           onClick={handleSave}
           disabled={isPending || !trimmed || !hasChanged}
