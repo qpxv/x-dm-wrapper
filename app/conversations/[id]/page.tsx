@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MarkConversationRead } from "@/components/mark-conversation-read";
+import { ScrollToBottom } from "@/components/scroll-to-bottom";
 import { cn } from "@/lib/utils";
 
 export default async function ConversationPage({
@@ -97,6 +98,7 @@ export default async function ConversationPage({
             ))}
           </div>
         ))}
+        <ScrollToBottom />
       </div>
     </div>
   );
