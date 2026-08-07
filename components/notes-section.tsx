@@ -6,6 +6,7 @@ import type { Note } from "@prisma/client";
 import { addNote } from "@/app/conversations/[id]/actions";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 const NOTES_MAX_HEIGHT = 160;
 
@@ -82,7 +83,7 @@ export function NotesSection({
           onClick={handleSave}
           disabled={isPending || !trimmed || !hasChanged}
         >
-          <Save className="size-4" />
+          {isPending ? <Spinner /> : <Save className="size-4" />}
         </Button>
       </div>
       {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}

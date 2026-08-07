@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function LoginPage(): JSX.Element {
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function LoginPage(): JSX.Element {
               </Alert>
             ) : null}
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign in"}
+              {isSubmitting ? <Spinner /> : "Sign in"}
             </Button>
           </form>
         </CardContent>
