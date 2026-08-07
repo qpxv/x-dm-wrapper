@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { computeCrcResponseToken, verifyWebhookSignature } from "@/lib/x/webhook-auth";
+import { ingestWebhookEvent, parseWebhookPayload } from "@/lib/x/ingest";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const crcToken = request.nextUrl.searchParams.get("crc_token");
@@ -20,11 +21,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
 
-  // Phase 2 scope: log identifying info only. Real ingestion (Contact/
-  // Conversation/Message writes, backfill, dedupe) lands in Phase 3 and
-  // will resolve the actual event data via the clean v2 dm_events read
-  // endpoint rather than parsing this payload directly.
-  console.log("x webhook event:", rawBody);
+  const parsed = parseWebhookPayload(rawBody);
+  if (!parsed) {
+    console.warn("x webhook event: unrecognized payload shape", rawBody);
+    return NextResponse.json({ ok: true });
+  }
+
+  // X invalidates a webhook after repeated failures, so a bug in ingestion
+  // shouldn't turn into a failed delivery — log and still 200.
+  try {
+    await ingestWebhookEvent(parsed);
+  } catch (error) {
+    console.error("x webhook event: ingestion failed", error);
+  }
 
   return NextResponse.json({ ok: true });
 }
