@@ -10,6 +10,9 @@ import { MarkConversationRead } from "@/components/mark-conversation-read";
 import { MessageThread } from "@/components/message-thread";
 import { NotesSection } from "@/components/notes-section";
 import { ReplyBox } from "@/components/reply-box";
+import { ReplyProvider } from "@/components/reply-context";
+import { AiSuggestButton } from "@/components/ai-suggest-button";
+import { SuggestionsPanel } from "@/components/suggestions-panel";
 
 export default async function ConversationPage({
   params,
@@ -37,34 +40,38 @@ export default async function ConversationPage({
   }
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-hidden">
-      <MarkConversationRead conversationId={conversation.id} />
+    <ReplyProvider conversationId={conversation.id}>
+      <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-hidden">
+        <MarkConversationRead conversationId={conversation.id} />
 
-      <div className="shrink-0">
-        <header className="flex items-center gap-3 border-b px-4 py-3">
-          <Link href="/" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-5" />
-          </Link>
-          <Avatar>
-            <AvatarImage src={conversation.contact.profileImageUrl ?? undefined} />
-            <AvatarFallback>{conversation.contact.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="truncate font-medium">{conversation.contact.name}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              @{conversation.contact.username}
-            </p>
-          </div>
-        </header>
+        <div className="shrink-0">
+          <header className="flex items-center gap-3 border-b px-4 py-3">
+            <Link href="/" className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="size-5" />
+            </Link>
+            <Avatar>
+              <AvatarImage src={conversation.contact.profileImageUrl ?? undefined} />
+              <AvatarFallback>{conversation.contact.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{conversation.contact.name}</p>
+              <p className="truncate text-sm text-muted-foreground">
+                @{conversation.contact.username}
+              </p>
+            </div>
+            <AiSuggestButton />
+          </header>
 
-        <NotesSection conversationId={conversation.id} notes={conversation.notes} />
+          <NotesSection conversationId={conversation.id} notes={conversation.notes} />
+        </div>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+          <MessageThread messages={conversation.messages} />
+        </div>
+
+        <SuggestionsPanel />
+        <ReplyBox conversationId={conversation.id} />
       </div>
-
-      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-        <MessageThread messages={conversation.messages} />
-      </div>
-
-      <ReplyBox conversationId={conversation.id} />
-    </div>
+    </ReplyProvider>
   );
 }

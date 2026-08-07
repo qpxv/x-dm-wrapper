@@ -3,19 +3,20 @@
 import { useState, useTransition, type JSX, type KeyboardEvent } from "react";
 import { Send } from "lucide-react";
 import { sendReply } from "@/app/conversations/[id]/actions";
+import { useReply } from "@/components/reply-context";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
 
 const REPLY_MAX_HEIGHT = 160;
 
 export function ReplyBox({ conversationId }: { conversationId: string }): JSX.Element {
-  const [text, setText] = useState("");
+  const { replyText, setReplyText } = useReply();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleSend(): void {
     setError(null);
-    const trimmed = text.trim();
+    const trimmed = replyText.trim();
     if (!trimmed) {
       return;
     }
@@ -23,7 +24,7 @@ export function ReplyBox({ conversationId }: { conversationId: string }): JSX.El
     startTransition(async () => {
       try {
         await sendReply(conversationId, trimmed);
-        setText("");
+        setReplyText("");
       } catch {
         setError("Couldn't send — try again.");
       }
@@ -41,8 +42,8 @@ export function ReplyBox({ conversationId }: { conversationId: string }): JSX.El
     <div className="border-t px-4 py-3">
       <div className="flex items-end gap-2">
         <AutoResizeTextarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Type a reply..."
           maxHeight={REPLY_MAX_HEIGHT}
@@ -53,7 +54,7 @@ export function ReplyBox({ conversationId }: { conversationId: string }): JSX.El
           className="size-9"
           aria-label="Send"
           onClick={handleSend}
-          disabled={isPending || !text.trim()}
+          disabled={isPending || !replyText.trim()}
         >
           <Send className="size-4" />
         </Button>
