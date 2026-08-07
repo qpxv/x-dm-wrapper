@@ -1,0 +1,16 @@
+name: Poll for missed DM webhooks
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger poll-dm endpoint
+        run: |
+          curl -f -sS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://x-dm-wrapper.vercel.app/api/cron/poll-dm
