@@ -54,7 +54,7 @@ export default async function ConversationPage({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain">
         <section className="border-b px-4 py-3">
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">Notes</h2>
           {conversation.notes.length === 0 ? (
