@@ -6,10 +6,20 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+function debugLog(payload) {
+  return fetch("/api/debug/sw-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 self.addEventListener("push", (event) => {
   let url = "/";
   let tag;
+  let rawText = null;
   if (event.data) {
+    rawText = event.data.text();
     try {
       const payload = event.data.json();
       if (typeof payload.url === "string") {
@@ -25,16 +35,35 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
+      await debugLog({ stage: "push-received", rawText, url, tag, time: Date.now() });
+
+      let existing = [];
       if (tag) {
-        const existing = await self.registration.getNotifications({ tag });
-        existing.forEach((notification) => notification.close());
+        existing = await self.registration.getNotifications({ tag });
       }
+      await debugLog({
+        stage: "existing-lookup",
+        tag,
+        existingCount: existing.length,
+        existingTags: existing.map((n) => n.tag),
+      });
+
+      existing.forEach((notification) => notification.close());
+
       await self.registration.showNotification("New message", {
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         data: { url },
         tag,
         renotify: true,
+      });
+
+      const after = await self.registration.getNotifications({});
+      await debugLog({
+        stage: "after-show",
+        tag,
+        totalActiveNotifications: after.length,
+        activeTags: after.map((n) => n.tag),
       });
     })()
   );
