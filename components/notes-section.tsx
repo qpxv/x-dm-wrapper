@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type JSX } from "react";
+import { useState, useTransition, type JSX, type KeyboardEvent } from "react";
 import { Save } from "lucide-react";
 import type { Note } from "@prisma/client";
 import { addNote } from "@/app/conversations/[id]/actions";
@@ -28,7 +28,7 @@ export function NotesSection({
 
   function handleSave(): void {
     setError(null);
-    if (!trimmed) {
+    if (!trimmed || !hasChanged) {
       return;
     }
 
@@ -39,6 +39,13 @@ export function NotesSection({
         setError("Couldn't save note — try again.");
       }
     });
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSave();
+    }
   }
 
   return (
@@ -72,6 +79,7 @@ export function NotesSection({
         <AutoResizeTextarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Add a note..."
           maxHeight={NOTES_MAX_HEIGHT}
           className="text-sm"
