@@ -93,12 +93,12 @@ model DmSyncCursor {
 }
 
 model PushSubscription {
-  id          String   @id @default(cuid())
-  endpoint    String   @unique
-  p256dh      String
-  auth        String
-  deviceLabel String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  deviceId  String   @unique
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
 }
 
 model User {

@@ -37,14 +37,26 @@ function describeError(err: unknown): string {
   return `Couldn't enable notifications: ${detail}`;
 }
 
+const DEVICE_ID_STORAGE_KEY = "push-device-id";
+
+function getDeviceId(): string {
+  let deviceId = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_STORAGE_KEY, deviceId);
+  }
+  return deviceId;
+}
+
 function toSubscriptionPayload(
   subscription: PushSubscription
-): { endpoint: string; keys: { p256dh: string; auth: string } } {
+): { deviceId: string; endpoint: string; keys: { p256dh: string; auth: string } } {
   const json = subscription.toJSON();
   if (!json.keys?.p256dh || !json.keys?.auth) {
     throw new Error("Push subscription is missing encryption keys");
   }
   return {
+    deviceId: getDeviceId(),
     endpoint: subscription.endpoint,
     keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
   };
