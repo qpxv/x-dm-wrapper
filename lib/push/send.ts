@@ -34,12 +34,7 @@ export async function notifyNewMessage(conversationId: string): Promise<void> {
             endpoint: subscription.endpoint,
             keys: { p256dh: subscription.p256dh, auth: subscription.auth },
           },
-          payload,
-          // RFC 8030 Topic header — lets the push service itself collapse a
-          // newer message for this chat with an earlier one that's still
-          // queued/undelivered, rather than relying solely on client-side
-          // notification replacement (unreliable on Safari/macOS).
-          { topic: conversationId }
+          payload
         );
       } catch (error) {
         const statusCode = (error as { statusCode?: number }).statusCode;
