@@ -1,4 +1,4 @@
-const SW_VERSION = "debug-2";
+const SW_VERSION = "debug-3";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -49,12 +49,25 @@ self.addEventListener("push", (event) => {
     if (tag) {
       const existing = await self.registration.getNotifications({ tag });
       await debugLog({ stage: "existing-before-close", tag, existingCount: existing.length });
-      if (existing.length > 0) {
-        existing.forEach((notification) => notification.close());
-        await new Promise((resolve) => setTimeout(resolve, 400));
-      }
+      existing.forEach((notification) => notification.close());
     }
     await self.registration.showNotification("New message", notificationOptions);
+
+    if (tag) {
+      // close() isn't reliably reflected within any single fixed wait on
+      // this platform (confirmed via logging: even after a 400ms wait,
+      // getNotifications() sometimes still showed 2). Retry-and-self-heal
+      // instead of trusting one wait to be long enough.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        const matches = await self.registration.getNotifications({ tag });
+        await debugLog({ stage: "reconcile-attempt", tag, attempt, matchCount: matches.length });
+        if (matches.length <= 1) {
+          break;
+        }
+        matches.slice(1).forEach((notification) => notification.close());
+      }
+    }
 
     const after = await self.registration.getNotifications({ tag });
     await debugLog({ stage: "lock-released", tag, finalCount: after.length });
