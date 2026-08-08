@@ -21,7 +21,10 @@ export async function notifyNewMessage(conversationId: string): Promise<void> {
   }
 
   const client = getWebPushClient();
-  const payload = JSON.stringify({ url: `/conversations/${conversationId}` });
+  const payload = JSON.stringify({
+    url: `/conversations/${conversationId}`,
+    tag: conversationId,
+  });
 
   await Promise.all(
     subscriptions.map(async (subscription) => {
