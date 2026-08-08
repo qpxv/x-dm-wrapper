@@ -37,19 +37,6 @@ self.addEventListener("push", (event) => {
     (async () => {
       await debugLog({ stage: "push-received", rawText, url, tag, time: Date.now() });
 
-      let existing = [];
-      if (tag) {
-        existing = await self.registration.getNotifications({ tag });
-      }
-      await debugLog({
-        stage: "existing-lookup",
-        tag,
-        existingCount: existing.length,
-        existingTags: existing.map((n) => n.tag),
-      });
-
-      existing.forEach((notification) => notification.close());
-
       await self.registration.showNotification("New message", {
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
@@ -58,13 +45,23 @@ self.addEventListener("push", (event) => {
         renotify: true,
       });
 
-      const after = await self.registration.getNotifications({});
-      await debugLog({
-        stage: "after-show",
-        tag,
-        totalActiveNotifications: after.length,
-        activeTags: after.map((n) => n.tag),
-      });
+      if (tag) {
+        // Closing an existing same-tag notification isn't instant on every
+        // platform, so a rapid pair of pushes can both leave a banner
+        // visible. Wait a beat, then self-heal: keep only the newest one.
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const matches = await self.registration.getNotifications({ tag });
+        await debugLog({
+          stage: "reconcile",
+          tag,
+          matchCount: matches.length,
+          timestamps: matches.map((n) => n.timestamp),
+        });
+        if (matches.length > 1) {
+          const sorted = [...matches].sort((a, b) => b.timestamp - a.timestamp);
+          sorted.slice(1).forEach((notification) => notification.close());
+        }
+      }
     })()
   );
 });
