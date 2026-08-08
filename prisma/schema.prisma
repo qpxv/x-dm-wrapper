@@ -28,6 +28,7 @@ model Conversation {
   lastMessageAt   DateTime?
   isUnread        Boolean   @default(false)
   backfilledAt    DateTime?
+  pendingNotifyAt DateTime?
   createdAt       DateTime  @default(now())
 
   messages Message[]

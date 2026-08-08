@@ -1,7 +1,8 @@
+import { after } from "next/server";
 import { Direction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { buildConversationId, fetchConversationEvents, type EmbeddedUser } from "@/lib/x/dm";
-import { notifyNewMessage } from "@/lib/push/send";
+import { extendNotifyDebounce, flushDebouncedNotify } from "@/lib/push/send";
 
 export interface ParsedWebhookEvent {
   eventId: string;
@@ -161,9 +162,16 @@ export async function ingestResolvedMessage(msg: ResolvedMessage): Promise<void>
 
   if (advanced && msg.direction === Direction.INBOUND) {
     try {
-      await notifyNewMessage(conversation.id);
+      const needsFlush = await extendNotifyDebounce(conversation.id);
+      if (needsFlush) {
+        after(() =>
+          flushDebouncedNotify(conversation.id).catch((error) =>
+            console.error("Failed to flush debounced notification", conversation.id, error)
+          )
+        );
+      }
     } catch (error) {
-      console.error("Failed to send push notification", error);
+      console.error("Failed to schedule push notification", error);
     }
   }
 

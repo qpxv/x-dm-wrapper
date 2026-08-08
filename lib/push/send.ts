@@ -47,3 +47,62 @@ export async function notifyNewMessage(conversationId: string): Promise<void> {
     })
   );
 }
+
+const DEBOUNCE_MS = 3 * 60 * 1000;
+
+// Extends (or starts) this conversation's debounce window. Returns true only
+// when no chain is already scheduled to check it — i.e. the caller should
+// kick off flushDebouncedNotify. If one's already running, extending the
+// timestamp is enough; that chain picks up the new deadline on its own.
+export async function extendNotifyDebounce(conversationId: string): Promise<boolean> {
+  const now = new Date();
+  const before = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { pendingNotifyAt: true },
+  });
+  const alreadyScheduled = !!before?.pendingNotifyAt && before.pendingNotifyAt > now;
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { pendingNotifyAt: new Date(now.getTime() + DEBOUNCE_MS) },
+  });
+
+  return !alreadyScheduled;
+}
+
+// Self-rescheduling: sleeps until pendingNotifyAt, then re-checks (a newer
+// message may have pushed it further out while sleeping) and loops. Only the
+// invocation that finds it due AND wins the atomic claim actually sends, so
+// if two chains ever exist concurrently the extra one is a harmless no-op.
+//
+// If a chain dies mid-sleep (e.g. a deploy restarts the function),
+// pendingNotifyAt is left stale in the past with nothing to claim it — the
+// next inbound message for this conversation will see it's in the past,
+// treat it as unscheduled, and kick off a fresh chain, so a lost chain only
+// delays that notification rather than losing it outright.
+export async function flushDebouncedNotify(conversationId: string): Promise<void> {
+  for (;;) {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { pendingNotifyAt: true },
+    });
+    if (!conversation?.pendingNotifyAt) {
+      return;
+    }
+
+    const waitMs = conversation.pendingNotifyAt.getTime() - Date.now();
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      continue;
+    }
+
+    const claimed = await prisma.conversation.updateMany({
+      where: { id: conversationId, pendingNotifyAt: { lte: new Date() } },
+      data: { pendingNotifyAt: null },
+    });
+    if (claimed.count > 0) {
+      await notifyNewMessage(conversationId);
+    }
+    return;
+  }
+}
