@@ -31,24 +31,26 @@ self.addEventListener("push", (event) => {
     renotify: true,
   };
 
-  event.waitUntil(
-    (async () => {
-      await self.registration.showNotification("New message", notificationOptions);
-
-      if (tag) {
-        // Closing an existing same-tag notification isn't instant on every
-        // platform, so two pushes arriving close together can both leave a
-        // banner visible. Self-heal: if more than one is left standing after
-        // a beat, collapse down to a single fresh one for this chat.
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const matches = await self.registration.getNotifications({ tag });
-        if (matches.length > 1) {
-          matches.forEach((notification) => notification.close());
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          await self.registration.showNotification("New message", notificationOptions);
-        }
+  async function showCollapsed() {
+    if (tag) {
+      const existing = await self.registration.getNotifications({ tag });
+      if (existing.length > 0) {
+        existing.forEach((notification) => notification.close());
+        // Closing isn't instant on every platform — give the OS a moment to
+        // actually remove it before showing the replacement, otherwise two
+        // pushes arriving close together can both leave a banner visible.
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
-    })()
+    }
+    await self.registration.showNotification("New message", notificationOptions);
+  }
+
+  // Two pushes for the same chat can be handled concurrently by the browser.
+  // Without serializing on the tag, both handlers can see "nothing to close
+  // yet" at the same time and each show their own banner. navigator.locks
+  // ensures only one push at a time runs the close-then-show sequence.
+  event.waitUntil(
+    tag && "locks" in navigator ? navigator.locks.request(tag, showCollapsed) : showCollapsed()
   );
 });
 
