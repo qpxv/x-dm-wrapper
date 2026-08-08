@@ -1,16 +1,16 @@
-name: Poll for missed DM webhooks
+name: Keep DM webhook CRC alive
 
 on:
   schedule:
-    - cron: "*/15 6-22 * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:
-  poll:
+  keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger poll-dm endpoint
+      - name: Trigger CRC revalidation
         run: |
           curl -f -sS \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://x-dm-wrapper.vercel.app/api/cron/poll-dm
+            https://x-dm-wrapper.vercel.app/api/cron/crc-keepalive
