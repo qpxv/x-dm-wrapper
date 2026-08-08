@@ -1,3 +1,5 @@
+const SW_VERSION = "debug-2";
+
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
@@ -5,6 +7,14 @@ self.addEventListener("install", () => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+function debugLog(payload) {
+  return fetch("/api/debug/sw-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ swVersion: SW_VERSION, ...payload }),
+  }).catch(() => {});
+}
 
 self.addEventListener("push", (event) => {
   let url = "/";
@@ -31,26 +41,36 @@ self.addEventListener("push", (event) => {
     renotify: true,
   };
 
+  const receivedAt = Date.now();
+
   async function showCollapsed() {
+    await debugLog({ stage: "lock-acquired", tag, receivedAt, elapsedMs: Date.now() - receivedAt });
+
     if (tag) {
       const existing = await self.registration.getNotifications({ tag });
+      await debugLog({ stage: "existing-before-close", tag, existingCount: existing.length });
       if (existing.length > 0) {
         existing.forEach((notification) => notification.close());
-        // Closing isn't instant on every platform — give the OS a moment to
-        // actually remove it before showing the replacement, otherwise two
-        // pushes arriving close together can both leave a banner visible.
         await new Promise((resolve) => setTimeout(resolve, 400));
       }
     }
     await self.registration.showNotification("New message", notificationOptions);
+
+    const after = await self.registration.getNotifications({ tag });
+    await debugLog({ stage: "lock-released", tag, finalCount: after.length });
   }
 
-  // Two pushes for the same chat can be handled concurrently by the browser.
-  // Without serializing on the tag, both handlers can see "nothing to close
-  // yet" at the same time and each show their own banner. navigator.locks
-  // ensures only one push at a time runs the close-then-show sequence.
   event.waitUntil(
-    tag && "locks" in navigator ? navigator.locks.request(tag, showCollapsed) : showCollapsed()
+    (async () => {
+      await debugLog({ stage: "push-received", tag, receivedAt });
+      if (tag && "locks" in navigator) {
+        await debugLog({ stage: "requesting-lock", tag });
+        await navigator.locks.request(tag, showCollapsed);
+      } else {
+        await debugLog({ stage: "no-lock-support", tag, hasLocks: "locks" in navigator });
+        await showCollapsed();
+      }
+    })()
   );
 });
 
