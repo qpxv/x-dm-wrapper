@@ -16,13 +16,19 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification("New message", {
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      data: { url },
-      tag,
-      renotify: true,
-    })
+    (async () => {
+      if (tag) {
+        const existing = await self.registration.getNotifications({ tag });
+        existing.forEach((notification) => notification.close());
+      }
+      await self.registration.showNotification("New message", {
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        data: { url },
+        tag,
+        renotify: true,
+      });
+    })()
   );
 });
 
