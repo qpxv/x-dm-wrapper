@@ -12,6 +12,7 @@ import { NotesSection } from "@/components/notes-section";
 import { ReplyBox } from "@/components/reply-box";
 import { ReplyProvider } from "@/components/reply-context";
 import { AiSuggestButton } from "@/components/ai-suggest-button";
+import { CopyConversationButton } from "@/components/copy-conversation-button";
 import { SuggestionsPanel } from "@/components/suggestions-panel";
 
 export default async function ConversationPage({
@@ -40,7 +41,12 @@ export default async function ConversationPage({
   }
 
   return (
-    <ReplyProvider conversationId={conversation.id} initialMessages={conversation.messages}>
+    <ReplyProvider
+      conversationId={conversation.id}
+      initialMessages={conversation.messages}
+      notes={conversation.notes}
+      contact={{ name: conversation.contact.name, username: conversation.contact.username }}
+    >
       <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-hidden">
         <MarkConversationRead conversationId={conversation.id} />
 
@@ -59,6 +65,7 @@ export default async function ConversationPage({
                 @{conversation.contact.username}
               </p>
             </div>
+            <CopyConversationButton />
             <AiSuggestButton />
           </header>
 

@@ -10,13 +10,15 @@ import {
   type JSX,
   type ReactNode,
 } from "react";
-import type { Message } from "@prisma/client";
+import type { Message, Note } from "@prisma/client";
 import { getAiSuggestions, sendReply } from "@/app/conversations/[id]/actions";
 
 interface ReplyContextValue {
   replyText: string;
   setReplyText: (text: string) => void;
   messages: Message[];
+  notes: Note[];
+  contact: { name: string; username: string };
   sendMessage: (text: string) => void;
   isSending: boolean;
   sendError: string | null;
@@ -33,10 +35,14 @@ const ReplyContext = createContext<ReplyContextValue | null>(null);
 export function ReplyProvider({
   conversationId,
   initialMessages,
+  notes,
+  contact,
   children,
 }: {
   conversationId: string;
   initialMessages: Message[];
+  notes: Note[];
+  contact: { name: string; username: string };
   children: ReactNode;
 }): JSX.Element {
   const [replyText, setReplyText] = useState("");
@@ -106,6 +112,8 @@ export function ReplyProvider({
         replyText,
         setReplyText,
         messages,
+        notes,
+        contact,
         sendMessage,
         isSending,
         sendError,
