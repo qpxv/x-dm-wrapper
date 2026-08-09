@@ -37,6 +37,7 @@ export function ReplyBox(): JSX.Element {
           size="icon"
           className="size-9"
           aria-label="Send"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handleSend}
           disabled={isSending || !replyText.trim()}
         >
