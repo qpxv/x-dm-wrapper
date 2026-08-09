@@ -48,7 +48,7 @@ export async function notifyNewMessage(conversationId: string): Promise<void> {
   );
 }
 
-const DEBOUNCE_MS = 3 * 60 * 1000;
+const DEBOUNCE_MS = 2 * 60 * 1000;
 
 // Extends (or starts) this conversation's debounce window. Returns true only
 // when no chain is already scheduled to check it — i.e. the caller should
