@@ -83,7 +83,7 @@ export async function addNote(conversationId: string, content: string): Promise<
   revalidatePath(`/conversations/${conversationId}`);
 }
 
-export async function getAiSuggestions(conversationId: string): Promise<string[]> {
+export async function getAiSuggestions(conversationId: string, hint?: string): Promise<string[]> {
   await requireSession();
 
   const [messages, notes] = await Promise.all([
@@ -99,5 +99,5 @@ export async function getAiSuggestions(conversationId: string): Promise<string[]
     }),
   ]);
 
-  return generateSuggestions(messages, notes);
+  return generateSuggestions(messages, notes, hint);
 }

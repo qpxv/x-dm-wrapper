@@ -59,11 +59,11 @@ export function ReplyProvider({
   const fetchSuggestions = useCallback(() => {
     setSuggestionsError(null);
     setIsLoadingSuggestions(true);
-    getAiSuggestions(conversationId)
+    getAiSuggestions(conversationId, replyText.trim() || undefined)
       .then((result) => setSuggestions(result))
       .catch(() => setSuggestionsError("Couldn't get suggestions — try again."))
       .finally(() => setIsLoadingSuggestions(false));
-  }, [conversationId]);
+  }, [conversationId, replyText]);
 
   const applySuggestion = useCallback((text: string) => {
     setReplyText(text);

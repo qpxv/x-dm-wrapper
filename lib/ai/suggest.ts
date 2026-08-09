@@ -23,7 +23,8 @@ interface SuggestionsResponse {
 
 export async function generateSuggestions(
   messages: Pick<Message, "direction" | "text">[],
-  notes: Pick<Note, "content" | "createdAt">[]
+  notes: Pick<Note, "content" | "createdAt">[],
+  hint?: string
 ): Promise<string[]> {
   const prompt = `Here is how I write — match this tone and style closely:
 <voice_samples>
@@ -39,8 +40,8 @@ The conversation so far, oldest first:
 <conversation>
 ${formatMessages(messages)}
 </conversation>
-
-Suggest exactly 3 distinct next messages I could send to continue this sales conversation, written in my voice. Keep them short, natural, and appropriate for a DM.`;
+${hint ? `\nI've started typing this in the reply box (not yet sent):\n<draft>\n${hint}\n</draft>\n` : ""}
+Suggest exactly 3 distinct next messages I could send to continue this sales conversation, written in my voice. Keep them short, natural, and appropriate for a DM.${hint ? " If my draft above reads like a direction or instruction (e.g. what topic to steer toward), use it as guidance rather than repeating it verbatim. If it reads like the start or fragment of an actual message, continue/complete it naturally instead." : ""}`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
