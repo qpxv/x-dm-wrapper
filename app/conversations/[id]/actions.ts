@@ -113,7 +113,7 @@ export async function getContactProfile(contactId: string): Promise<{
 export async function getAiSuggestions(conversationId: string, hint?: string): Promise<string[]> {
   await requireSession();
 
-  const [messages, notes] = await Promise.all([
+  const [messages, notes, conversation] = await Promise.all([
     prisma.message.findMany({
       where: { conversationId },
       orderBy: { sentAt: "asc" },
@@ -124,7 +124,11 @@ export async function getAiSuggestions(conversationId: string, hint?: string): P
       orderBy: { createdAt: "asc" },
       select: { content: true, createdAt: true },
     }),
+    prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { contact: { select: { description: true } } },
+    }),
   ]);
 
-  return generateSuggestions(messages, notes, hint);
+  return generateSuggestions(messages, notes, hint, conversation?.contact.description);
 }

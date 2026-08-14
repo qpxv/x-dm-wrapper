@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Message, Note } from "@prisma/client";
 import { VOICE_SAMPLES } from "@/lib/constants/voice-samples";
+import { SALES_SOP } from "@/lib/constants/sales-sop";
 
 const client = new Anthropic();
 
@@ -24,13 +25,19 @@ interface SuggestionsResponse {
 export async function generateSuggestions(
   messages: Pick<Message, "direction" | "text">[],
   notes: Pick<Note, "content" | "createdAt">[],
-  hint?: string
+  hint?: string,
+  profileDescription?: string | null
 ): Promise<string[]> {
   const prompt = `Here is how I write — match this tone and style closely:
 <voice_samples>
 ${VOICE_SAMPLES}
 </voice_samples>
 
+Here is my SOP for how I want sales conversations to typically go — use it as a playbook, not a rigid script:
+<sales_sop>
+${SALES_SOP}
+</sales_sop>
+${profileDescription ? `\nThe prospect's X bio, for extra context on who they are:\n<prospect_profile>\n${profileDescription}\n</prospect_profile>\n` : ""}
 My private strategy notes for this specific lead, oldest first:
 <notes>
 ${formatNotes(notes)}
