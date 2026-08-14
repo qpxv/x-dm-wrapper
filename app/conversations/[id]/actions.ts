@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchUserProfile, sendDirectMessage } from "@/lib/x/dm";
 import { advanceLastMessageAt } from "@/lib/x/ingest";
 import { generateSuggestions } from "@/lib/ai/suggest";
+import { locateStage } from "@/lib/ai/locate-stage";
 
 async function requireSession(): Promise<void> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -131,4 +132,29 @@ export async function getAiSuggestions(conversationId: string, hint?: string): P
   ]);
 
   return generateSuggestions(messages, notes, hint, conversation?.contact.description);
+}
+
+export async function getSopLocation(
+  conversationId: string
+): Promise<{ stage: string; summary: string }> {
+  await requireSession();
+
+  const [messages, notes, conversation] = await Promise.all([
+    prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { sentAt: "asc" },
+      select: { direction: true, text: true },
+    }),
+    prisma.note.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "asc" },
+      select: { content: true, createdAt: true },
+    }),
+    prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { contact: { select: { description: true } } },
+    }),
+  ]);
+
+  return locateStage(messages, notes, conversation?.contact.description);
 }

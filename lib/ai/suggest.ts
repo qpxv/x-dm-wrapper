@@ -5,13 +5,13 @@ import { SALES_SOP } from "@/lib/constants/sales-sop";
 
 const client = new Anthropic();
 
-function formatMessages(messages: Pick<Message, "direction" | "text">[]): string {
+export function formatMessages(messages: Pick<Message, "direction" | "text">[]): string {
   return messages
     .map((m) => `${m.direction === "OUTBOUND" ? "Me" : "Them"}: ${m.text}`)
     .join("\n");
 }
 
-function formatNotes(notes: Pick<Note, "content" | "createdAt">[]): string {
+export function formatNotes(notes: Pick<Note, "content" | "createdAt">[]): string {
   if (notes.length === 0) {
     return "(no notes)";
   }

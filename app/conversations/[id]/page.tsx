@@ -14,6 +14,8 @@ import { ReplyProvider } from "@/components/reply-context";
 import { AiSuggestButton } from "@/components/ai-suggest-button";
 import { CopyConversationButton } from "@/components/copy-conversation-button";
 import { SuggestionsPanel } from "@/components/suggestions-panel";
+import { SopLocationButton } from "@/components/sop-location-button";
+import { SopLocationPanel } from "@/components/sop-location-panel";
 
 export default async function ConversationPage({
   params,
@@ -67,6 +69,7 @@ export default async function ConversationPage({
               description={conversation.contact.description}
             />
             <CopyConversationButton />
+            <SopLocationButton />
             <AiSuggestButton />
           </header>
 
@@ -77,6 +80,7 @@ export default async function ConversationPage({
           <MessageThread />
         </div>
 
+        <SopLocationPanel />
         <SuggestionsPanel />
         <ReplyBox />
       </div>

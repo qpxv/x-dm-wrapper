@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Message, Note } from "@prisma/client";
-import { getAiSuggestions, sendReply } from "@/app/conversations/[id]/actions";
+import { getAiSuggestions, getSopLocation, sendReply } from "@/app/conversations/[id]/actions";
 
 interface ReplyContextValue {
   replyText: string;
@@ -28,6 +28,11 @@ interface ReplyContextValue {
   fetchSuggestions: () => void;
   applySuggestion: (text: string) => void;
   dismissSuggestions: () => void;
+  sopLocation: { stage: string; summary: string } | null;
+  isLoadingSopLocation: boolean;
+  sopLocationError: string | null;
+  fetchSopLocation: () => void;
+  dismissSopLocation: () => void;
 }
 
 const ReplyContext = createContext<ReplyContextValue | null>(null);
@@ -49,6 +54,9 @@ export function ReplyProvider({
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
+  const [sopLocation, setSopLocation] = useState<{ stage: string; summary: string } | null>(null);
+  const [isLoadingSopLocation, setIsLoadingSopLocation] = useState(false);
+  const [sopLocationError, setSopLocationError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, startTransition] = useTransition();
   const [messages, addOptimisticMessage] = useOptimistic(
@@ -71,6 +79,17 @@ export function ReplyProvider({
   }, []);
 
   const dismissSuggestions = useCallback(() => setSuggestions(null), []);
+
+  const fetchSopLocation = useCallback(() => {
+    setSopLocationError(null);
+    setIsLoadingSopLocation(true);
+    getSopLocation(conversationId)
+      .then((result) => setSopLocation(result))
+      .catch(() => setSopLocationError("Couldn't locate stage — try again."))
+      .finally(() => setIsLoadingSopLocation(false));
+  }, [conversationId]);
+
+  const dismissSopLocation = useCallback(() => setSopLocation(null), []);
 
   const sendMessage = useCallback(
     (text: string) => {
@@ -123,6 +142,11 @@ export function ReplyProvider({
         fetchSuggestions,
         applySuggestion,
         dismissSuggestions,
+        sopLocation,
+        isLoadingSopLocation,
+        sopLocationError,
+        fetchSopLocation,
+        dismissSopLocation,
       }}
     >
       {children}
