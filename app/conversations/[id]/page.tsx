@@ -45,7 +45,11 @@ export default async function ConversationPage({
       conversationId={conversation.id}
       initialMessages={conversation.messages}
       notes={conversation.notes}
-      contact={{ name: conversation.contact.name, username: conversation.contact.username }}
+      contact={{
+        name: conversation.contact.name,
+        username: conversation.contact.username,
+        description: conversation.contact.description,
+      }}
     >
       <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-hidden">
         <MarkConversationRead conversationId={conversation.id} />

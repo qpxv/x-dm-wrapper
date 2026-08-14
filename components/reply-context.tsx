@@ -18,7 +18,7 @@ interface ReplyContextValue {
   setReplyText: (text: string) => void;
   messages: Message[];
   notes: Note[];
-  contact: { name: string; username: string };
+  contact: { name: string; username: string; description: string | null };
   sendMessage: (text: string) => void;
   isSending: boolean;
   sendError: string | null;
@@ -42,7 +42,7 @@ export function ReplyProvider({
   conversationId: string;
   initialMessages: Message[];
   notes: Note[];
-  contact: { name: string; username: string };
+  contact: { name: string; username: string; description: string | null };
   children: ReactNode;
 }): JSX.Element {
   const [replyText, setReplyText] = useState("");

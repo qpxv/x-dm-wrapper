@@ -1,7 +1,8 @@
 import type { Message, Note } from "@prisma/client";
+import { SALES_SOP } from "@/lib/constants/sales-sop";
 
 export function formatConversationForCopy(
-  contact: { name: string; username: string },
+  contact: { name: string; username: string; description: string | null },
   messages: Message[],
   notes: Note[]
 ): string {
@@ -22,5 +23,14 @@ export function formatConversationForCopy(
   );
 
   const header = `Conversation with ${contact.name} (@${contact.username})`;
-  return [header, "", ...timeline.map((e) => e.line)].join("\n");
+  const sections = [header, ""];
+
+  if (contact.description) {
+    sections.push("Prospect's X bio:", contact.description, "");
+  }
+
+  sections.push("My sales SOP:", SALES_SOP, "");
+  sections.push(...timeline.map((e) => e.line));
+
+  return sections.join("\n");
 }
