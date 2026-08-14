@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ContactProfileDialog } from "@/components/contact-profile-dialog";
 import { MarkConversationRead } from "@/components/mark-conversation-read";
 import { MessageThread } from "@/components/message-thread";
 import { NotesSection } from "@/components/notes-section";
@@ -55,16 +55,13 @@ export default async function ConversationPage({
             <Link href="/" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="size-5" />
             </Link>
-            <Avatar>
-              <AvatarImage src={conversation.contact.profileImageUrl ?? undefined} />
-              <AvatarFallback>{conversation.contact.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{conversation.contact.name}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                @{conversation.contact.username}
-              </p>
-            </div>
+            <ContactProfileDialog
+              contactId={conversation.contact.id}
+              name={conversation.contact.name}
+              username={conversation.contact.username}
+              profileImageUrl={conversation.contact.profileImageUrl}
+              description={conversation.contact.description}
+            />
             <CopyConversationButton />
             <AiSuggestButton />
           </header>

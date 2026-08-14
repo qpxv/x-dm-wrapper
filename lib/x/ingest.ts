@@ -102,6 +102,7 @@ async function upsertContact(userId: string, embeddedUsers: Map<string, Embedded
       username: embedded?.username ?? userId,
       name: embedded?.name ?? userId,
       profileImageUrl: embedded?.profile_image_url,
+      description: embedded?.description,
     },
     update: {},
   });

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Direction } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendDirectMessage } from "@/lib/x/dm";
+import { fetchUserProfile, sendDirectMessage } from "@/lib/x/dm";
 import { advanceLastMessageAt } from "@/lib/x/ingest";
 import { generateSuggestions } from "@/lib/ai/suggest";
 
@@ -81,6 +81,33 @@ export async function addNote(conversationId: string, content: string): Promise<
   });
 
   revalidatePath(`/conversations/${conversationId}`);
+}
+
+export async function getContactProfile(contactId: string): Promise<{
+  name: string;
+  username: string;
+  profileImageUrl: string | null;
+  description: string | null;
+}> {
+  await requireSession();
+
+  const contact = await prisma.contact.findUniqueOrThrow({ where: { id: contactId } });
+
+  if (contact.description !== null) {
+    return contact;
+  }
+
+  const profile = await fetchUserProfile(contact.xUserId);
+  if (!profile) {
+    return contact;
+  }
+
+  const updated = await prisma.contact.update({
+    where: { id: contactId },
+    data: { description: profile.description ?? "" },
+  });
+
+  return updated;
 }
 
 export async function getAiSuggestions(conversationId: string, hint?: string): Promise<string[]> {

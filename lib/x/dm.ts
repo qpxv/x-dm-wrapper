@@ -10,6 +10,7 @@ export interface EmbeddedUser {
   username: string;
   name: string;
   profile_image_url?: string;
+  description?: string;
 }
 
 export interface DmEvent {
@@ -137,7 +138,7 @@ export async function fetchRecentDmEvents(maxResults: number): Promise<DmEventsW
     max_results: String(maxResults),
     "dm_event.fields": DM_EVENT_FIELDS,
     expansions: "sender_id,participant_ids",
-    "user.fields": "username,name,profile_image_url",
+    "user.fields": "username,name,profile_image_url,description",
   });
 
   const response = await fetch(`https://api.x.com/2/dm_events?${params.toString()}`, {
@@ -158,6 +159,52 @@ export async function fetchRecentDmEvents(maxResults: number): Promise<DmEventsW
     events: body.data ?? [],
     users,
     nextToken: body.meta?.next_token ?? null,
+  };
+}
+
+interface UserResponse {
+  data?: {
+    username: string;
+    name: string;
+    profile_image_url?: string;
+    description?: string;
+  };
+}
+
+export interface UserProfile {
+  username: string;
+  name: string;
+  profileImageUrl?: string;
+  description?: string;
+}
+
+// Rate-cap gated: returns null if the daily API call cap has been reached.
+export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
+  const allowed = await tryConsumeApiCall();
+  if (!allowed) {
+    return null;
+  }
+
+  const accessToken = await getValidAccessToken();
+  const params = new URLSearchParams({ "user.fields": "username,name,profile_image_url,description" });
+  const response = await fetch(`https://api.x.com/2/users/${userId}?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch user: ${response.status} ${await response.text()}`);
+  }
+
+  const body: UserResponse = await response.json();
+  if (!body.data) {
+    return null;
+  }
+
+  return {
+    username: body.data.username,
+    name: body.data.name,
+    profileImageUrl: body.data.profile_image_url,
+    description: body.data.description,
   };
 }
 
